@@ -38,9 +38,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const {id } = await params
     const session = await auth()
 
     if (!session?.user?.id) {
@@ -51,23 +52,20 @@ export async function PATCH(
 
     const job = await prisma.job.findFirst({
       where: {
-        id: params.id,
+        id: id,
         userId: session.user.id,
       },
     })
-
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 })
     }
-
     const updatedJob = await prisma.job.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         ...body,
         applicationDate: body.applicationDate ? new Date(body.applicationDate) : undefined,
       },
     })
-
     return NextResponse.json(updatedJob)
   } catch (error) {
     console.error("Error updating job:", error)

@@ -126,6 +126,7 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
             {job.jobUrl && (
               <Button
                 variant="outline"
+                className="cursor-pointer"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -140,7 +141,7 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
               <select
                 value={job.status}
                 onChange={(e) => handleStatusChange(e.target.value as JobStatus)}
-                className="text-sm border rounded px-2 py-1 bg-white"
+                className="text-sm border rounded px-2 py-1 bg-white cursor-pointer"
                 onClick={(e) => e.stopPropagation()}
               >
                 <option value="APPLIED">Applied</option>
@@ -154,6 +155,7 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
             <Button
               variant="outline"
               size="sm"
+                className="cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
                 handleDelete()
@@ -171,13 +173,7 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
         onClose={() => setIsDetailModalOpen(false)}
         onUpdate={onUpdate}
       />
-       <EditJobModal 
-              isOpen={isEditJobOpen}
-              onClose={() => {
-                setIsEditJobOpen(false)
-                setIsDetailModalOpen(false)}
-              }
-              />
+       
     </>
   )
 }

@@ -1,0 +1,144 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  hashedPassword String?
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  jobs          Job[]
+  reminders     Reminder[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Job {
+  id                String      @id @default(cuid())
+  title             String
+  company           String
+  applicationDate   DateTime
+  status            JobStatus   @default(APPLIED)
+  jobUrl            String?
+  skillsRequired    String
+  jobRequirements   String
+  experienceNeeded  Int?
+  notes             String?
+  salary            String?
+  location          String?
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events            JobEvent[]
+  reminders         Reminder[]
+  attachments       Attachment[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model JobEvent {
+  id          String    @id @default(cuid())
+  type        EventType
+  title       String
+  description String?
+  date        DateTime
+  jobId       String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+
+model Reminder {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  completed   Boolean     @default(false)
+  type        ReminderType @default(FOLLOW_UP)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String?
+  job         Job?        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  filename  String
+  fileUrl   String
+  fileType  String
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+enum JobStatus {
+  APPLIED
+  INTERVIEWING
+  OFFER
+  REJECTED
+  WITHDRAWN
+}
+
+enum EventType {
+  APPLICATION
+  INTERVIEW
+  FOLLOW_UP
+  OFFER_RECEIVED
+  REJECTION
+  OTHER
+}
+
+enum ReminderType {
+  FOLLOW_UP
+  INTERVIEW_PREP
+  THANK_YOU_NOTE
+  APPLICATION_DEADLINE
+  OTHER
+}

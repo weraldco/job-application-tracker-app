@@ -1,108 +1,200 @@
-import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import mammoth from 'mammoth';
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+// pdf-parse will be dynamically imported where needed to avoid default export typing issues
 
 // Create OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+	apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Helper: fetch text content from a URL
-async function fetchPageContent(url: string): Promise<string> {
-  try {
-    // Use ScraperAPI to fetch LinkedIn or other protected pages
-    const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
-    if (!SCRAPER_API_KEY) throw new Error("Missing ScraperAPI key");
+const apiKey = process.env.GEMINI_API_KEY;
+const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
-    const apiUrl = `https://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(url)}`;
-    const res = await fetch(apiUrl);
+async function callApiWithBackoff(payload: any, retries = 5, delay = 1000) {
+	// console.log('Sending payload:', JSON.stringify(payload, null, 2));
+	try {
+		const response = await fetch(apiUrl, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+		});
 
-    if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
-
-    const html = await res.text();
-
-    // Basic text cleaning
-    const cleanText = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    return cleanText.slice(0, 15000);
-  } catch (error) {
-    console.error("Error fetching page:", error);
-    throw new Error("Failed to fetch page content");
-  }
+		if (response.status === 429 && retries > 0) {
+			console.warn(`Rate limit exceeded. Retrying in ${delay}ms..`);
+			await new Promise((res) => setTimeout(res, delay));
+			return callApiWithBackoff(payload, retries - 1, delay * 2);
+		}
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
+		return await response.json();
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new Error(`API call failed: ${error.message}`);
+		} else {
+			throw new Error('API call failed: Unknown error');
+		}
+	}
 }
-
 
 export async function POST(request: NextRequest) {
-  try {
-    const { url } = await request.json();
+	try {
+		const formData = await request.formData();
+		const file = formData.get('file') as File | null;
+		const textData = formData.get('textData') as string | null;
 
-    if (!url) {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 });
-    }
+		let extractedText = '';
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured" },
-        { status: 500 }
-      );
-    }
+		// DEBUGGING CHECKING IF THE DATA IS STORED IN FORM DATA
+		console.log('textdata', textData);
+		console.log('file', file);
+		// IF TEXTDATA IS PROVIDED
+		if (textData && !file) {
+			extractedText = textData;
+		}
 
-    // Fetch job posting HTML content
-    const pageText = await fetchPageContent(url);
+		// IF FILE IS PROVIDED
+		if (file) {
+			const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Use OpenAI to extract and summarize job details
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // or "gpt-4o" if you have access
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a job posting summarizer. Extract clear, structured information from job listings.",
-        },
-        {
-          role: "user",
-          content: `
-Extract key details from the following job posting:
+			// A. IMAGE (OCR using Gemini Vision)
+			if (file.type.startsWith('image/')) {
+				const base64 = buffer.toString('base64');
 
-${pageText}
+				const visionPayload = {
+					contents: [
+						{
+							parts: [
+								{ text: 'Extract ALL text from this job posting screenshot.' },
+								{
+									inlineData: {
+										mimeType: file.type,
+										data: base64,
+									},
+								},
+							],
+						},
+					],
+				};
 
-Provide a JSON object with the following keys:
-{
-  "title": string,
-  "company": string,
-  "skillsRequired": string,
-  "jobRequirements": string,
-  "experienceNeeded": string,
-  "location": string,
-  "salary": string,
-  "summary": string
-}
-If a field is not found, use an empty string.
-`,
-        },
-      ],
-      temperature: 0.3,
-    });
+				const visionResult = await callApiWithBackoff(visionPayload);
 
-    const rawOutput = completion.choices[0].message?.content || "{}";
+				extractedText =
+					visionResult?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    let structuredData;
-    try {
-      structuredData = JSON.parse(rawOutput);
-    } catch {
-      structuredData = { summary: rawOutput };
-    }
+				if (!extractedText) {
+					return NextResponse.json(
+						{ error: 'Failed to extract text from image.' },
+						{ status: 500 }
+					);
+				}
+			}
 
-    return NextResponse.json(structuredData);
-  } catch (error) {
-    console.error("Error summarizing job:", error);
-    return NextResponse.json(
-      { error: "Failed to summarize job posting" },
-      { status: 500 }
-    );
-  }
+			// B. PDF
+			let pdfParse: any;
+			if (file.type === 'application/pdf') {
+				const pdfModule = await import('pdf-parse');
+				const pdfParseFunc = (pdfModule as any).default ?? (pdfModule as any);
+				const pdfData = await pdfParseFunc(buffer);
+				extractedText = pdfData.text || '';
+			}
+
+			// C. DOCX
+			else if (
+				file.type ===
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+			) {
+				const result = await mammoth.extractRawText({ buffer });
+				extractedText = result.value || '';
+
+				if (!extractedText.trim()) {
+					return NextResponse.json(
+						{ error: 'Could not extract text from DOCX.' },
+						{ status: 400 }
+					);
+				}
+			}
+
+			// Unsupported file
+			else {
+				return NextResponse.json(
+					{ error: 'Unsupported file type.' },
+					{ status: 400 }
+				);
+			}
+		}
+
+		// FINAL SAFETY CHECK
+		if (!extractedText.trim()) {
+			return NextResponse.json(
+				{ error: 'No text found to summarize.' },
+				{ status: 400 }
+			);
+		}
+
+		// ============== 3. Build Prompt for Job Extractor ==============
+		const prompt = `
+		You are a job posting details extractor. Your task is to extract the key information from the provided job posting text. 
+                    The output should be a JSON object with the following fields:
+                    - title: The title of the job.
+                    - company: The name of the company.
+                    - jobDetails: A summary of the job description. Keep it concise, but include key responsibilities.
+                    - jobRequirements: A summary of the candidate requirements, such as qualifications and experience.
+                    - skillRequired: A list of specific skills required for the role.
+                    - experienceNeeded: number of years of experience
+                    - location: Location of the company, address of the company.
+                    - salary: A salary of this job posting
+                    Provided job posting text:
+                    ${textData}
+		`;
+
+		const payload = {
+			contents: [{ role: 'user', parts: [{ text: prompt }] }],
+			generationConfig: {
+				responseMimeType: 'application/json',
+				responseSchema: {
+					type: 'object',
+					properties: {
+						title: { type: 'string' },
+						company: { type: 'string' },
+						jobDetails: { type: 'string' },
+						jobRequirements: { type: 'array', items: { type: 'string' } },
+						skillsRequired: { type: 'array', items: { type: 'string' } },
+						experienceNeeded: { type: 'number' },
+						location: { type: 'string' },
+						salary: { type: 'number' },
+					},
+					required: ['title', 'company', 'jobDetails'],
+				},
+			},
+		};
+
+		// ============== 4. CALL GEMINI ==============
+		const result = await callApiWithBackoff(payload);
+
+		const candidate = result?.candidates?.[0]?.content?.parts?.[0];
+		if (!candidate?.text) {
+			return NextResponse.json(
+				{ error: 'Structured JSON not returned by Gemini.' },
+				{ status: 500 }
+			);
+		}
+
+		// Parse the JSON result
+		const structuredData =
+			typeof candidate.text === 'string'
+				? JSON.parse(candidate.text)
+				: candidate.text;
+
+		return NextResponse.json(structuredData);
+	} catch (error: any) {
+		console.error('Error:', error);
+		return NextResponse.json(
+			{ error: error.message || 'Server error' },
+			{ status: 500 }
+		);
+	}
 }

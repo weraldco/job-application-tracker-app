@@ -38,18 +38,18 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
+  id             String     @id @default(cuid())
+  name           String?
+  email          String     @unique
   hashedPassword String?
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  jobs          Job[]
-  reminders     Reminder[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  emailVerified  DateTime?
+  image          String?
+  accounts       Account[]
+  sessions       Session[]
+  jobs           Job[]
+  reminders      Reminder[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }
 
 model VerificationToken {
@@ -61,25 +61,25 @@ model VerificationToken {
 }
 
 model Job {
-  id                String      @id @default(cuid())
-  title             String
-  company           String
-  applicationDate   DateTime
-  status            JobStatus   @default(APPLIED)
-  jobUrl            String?
-  skillsRequired    String
-  jobRequirements   String
-  experienceNeeded  Int?
-  notes             String?
-  salary            String?
-  location          String?
-  userId            String
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events            JobEvent[]
-  reminders         Reminder[]
-  attachments       Attachment[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id               String       @id @default(cuid())
+  title            String
+  company          String
+  applicationDate  DateTime
+  status           JobStatus    @default(APPLIED)
+  jobUrl           String?
+  skillsRequired   String
+  jobRequirements  String
+  experienceNeeded Int?
+  notes            String?
+  salary           String?
+  location         String?
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events           JobEvent[]
+  reminders        Reminder[]
+  attachments      Attachment[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 }
 
 model JobEvent {
@@ -94,18 +94,18 @@ model JobEvent {
 }
 
 model Reminder {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
   dueDate     DateTime
-  completed   Boolean     @default(false)
+  completed   Boolean      @default(false)
   type        ReminderType @default(FOLLOW_UP)
   userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobId       String?
-  job         Job?        @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  job         Job?         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Attachment {

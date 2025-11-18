@@ -22,12 +22,15 @@ interface JobSummarizerModalProps {
 	onJobAdded: (job: Job) => void;
 }
 
-interface SummarizedJob {
+export interface SummarizedJob {
 	title: string;
 	company: string;
-	skillsRequired: string;
-	jobRequirements: string;
+	applicationDate: Date;
+	jobUrl?: string;
+	skillsRequired: string[];
+	jobRequirements: string[];
 	experienceNeeded: number | null;
+	notes?: string;
 	location?: string;
 	salary?: string;
 }
@@ -94,29 +97,9 @@ export function JobSummarizerModal({
 		}
 	};
 
-	// const handleSummarize = async () => {
-	// 	if (!file) {
-	// 		toast({
-	// 			title: 'Error',
-	// 			description:
-	// 				'Please upload your file throught file uploaded. eg. docx, pdf or image',
-	// 			variant: 'destructive',
-	// 		});
-	// 		return;
-	// 	}
-	// 	setIsLoading(true);
-
-	// 	const formData = new FormData();
-	// 	formData.append('file', file);
-
-	// 	const response = await fetch('/api/ai/summarize-file', {
-	// 		method: 'POST',
-	// 		body: formData,
-	// 	});
-	// };
 	const handleSubmit = async () => {
 		if (!summarizedJob) return;
-
+		console.log(summarizedJob);
 		setIsSubmitting(true);
 		try {
 			const response = await fetch('/api/jobs', {
@@ -127,10 +110,12 @@ export function JobSummarizerModal({
 				body: JSON.stringify({
 					...summarizedJob,
 					applicationDate: new Date().toISOString(),
-					jobUrl: textData,
+					jobUrl: summarizedJob?.jobUrl ? summarizedJob.jobUrl : '',
+					skillsRequired: summarizedJob.skillsRequired.join(','),
+					jobRequirements: summarizedJob.jobRequirements.join(','),
+					salary: String(summarizedJob.salary),
 				}),
 			});
-
 			if (response.ok) {
 				const job = await response.json();
 				onJobAdded(job);
@@ -171,7 +156,6 @@ export function JobSummarizerModal({
 		setFile(null);
 		setSummarizedJob(null);
 	};
-	console.log('Data', summarizedJob);
 
 	if (!isOpen) return null;
 	return (
@@ -392,7 +376,7 @@ export function JobSummarizerModal({
 										onChange={(e) =>
 											setSummarizedJob({
 												...summarizedJob,
-												skillsRequired: e.target.value,
+												skillsRequired: e.target.value.split(','),
 											})
 										}
 										rows={3}
@@ -408,7 +392,7 @@ export function JobSummarizerModal({
 									onChange={(e) =>
 										setSummarizedJob({
 											...summarizedJob,
-											jobRequirements: e.target.value,
+											jobRequirements: e.target.value.split(','),
 										})
 									}
 									rows={4}

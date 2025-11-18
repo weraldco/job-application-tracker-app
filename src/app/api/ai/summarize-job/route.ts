@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+export const runtime = 'nodejs';
 import mammoth from 'mammoth';
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
@@ -94,12 +94,8 @@ export async function POST(request: NextRequest) {
 			}
 
 			// B. PDF
-			let pdfParse: any;
 			if (file.type === 'application/pdf') {
-				const pdfModule = await import('pdf-parse');
-				const pdfParseFunc = (pdfModule as any).default ?? (pdfModule as any);
-				const pdfData = await pdfParseFunc(buffer);
-				extractedText = pdfData.text || '';
+				console.log('PDF');
 			}
 
 			// C. DOCX
@@ -109,7 +105,6 @@ export async function POST(request: NextRequest) {
 			) {
 				const result = await mammoth.extractRawText({ buffer });
 				extractedText = result.value || '';
-
 				if (!extractedText.trim()) {
 					return NextResponse.json(
 						{ error: 'Could not extract text from DOCX.' },
@@ -148,7 +143,7 @@ export async function POST(request: NextRequest) {
                     - location: Location of the company, address of the company.
                     - salary: A salary of this job posting
                     Provided job posting text:
-                    ${textData}
+                    ${extractedText}
 		`;
 
 		const payload = {
@@ -167,7 +162,7 @@ export async function POST(request: NextRequest) {
 						location: { type: 'string' },
 						salary: { type: 'number' },
 					},
-					required: ['title', 'company', 'jobDetails'],
+					// required: ['title', 'company', 'jobDetails'],
 				},
 			},
 		};

@@ -9,18 +9,18 @@ export async function GET() {
 		if (!session?.user?.id) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
-
-		const jobs = await prisma.job.findMany({
+		console.log('User ID', session.user.id);
+		const reminder = await prisma.reminder.findMany({
 			where: { userId: session.user.id },
-			include: {
-				events: true,
-				reminders: true,
-				attachments: true,
-			},
 			orderBy: { createdAt: 'desc' },
 		});
 
-		return NextResponse.json(jobs);
+		const jobs = await prisma.job.findMany({
+			where: { userId: session.user.id },
+		});
+
+		console.log('r', reminder);
+		return NextResponse.json({ reminder: reminder, jobs: jobs });
 	} catch (error) {
 		console.error('Error fetching jobs:', error);
 		return NextResponse.json(
@@ -37,45 +37,24 @@ export async function POST(request: NextRequest) {
 		if (!session?.user?.id) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
-
 		const body = await request.json();
-		const {
-			title,
-			company,
-			applicationDate,
-			status = 'APPLIED',
-			jobUrl,
-			skillsRequired,
-			jobRequirements,
-			experienceNeeded,
-			notes,
-			salary,
-			location,
-		} = body;
 
-		const job = await prisma.job.create({
+		const { title, description, dueDate, completed, type, jobId } = body;
+		const reminder = await prisma.reminder.create({
 			data: {
 				title,
-				company,
-				applicationDate: new Date(applicationDate),
-				status,
-				jobUrl,
-				skillsRequired,
-				jobRequirements,
-				experienceNeeded,
-				notes,
-				salary,
-				location,
+				description,
+				dueDate,
+				completed,
+				type,
 				userId: session.user.id,
+				jobId,
 			},
 		});
-
-		return NextResponse.json(job);
+		return NextResponse.json(reminder);
 	} catch (error) {
-		console.error('Error creating job:', error);
-		return NextResponse.json(
-			{ error: 'Internal server error' },
-			{ status: 500 }
-		);
+		return NextResponse.json({
+			error: `Error adding new reminder in backenndm, ${error}`,
+		});
 	}
 }

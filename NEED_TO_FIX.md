@@ -20,8 +20,14 @@
    - We need job details.
    - Footer button no function yet, but not so important to do it first.
 
-5. Analytics Page [Inprogress]
+5. Analytics Page [Done]
 
    - creating api for analytics
 
-6. Reminders
+6. Reminders [Inprogress]
+   - create a modal form for reminder
+     - Title of Reminder
+     - Type of Reminder
+     - Company
+     - Description
+     - Date and time to remind

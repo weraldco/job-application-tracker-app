@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { EditJobModal } from './edit-job-modal';
+import { SkillsItem } from './skill-item';
 
 interface JobCardProps {
 	job: Job;
@@ -187,7 +188,3 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
 		</>
 	);
 }
-
-const SkillsItem = ({ children }: { children: React.ReactNode }) => {
-	return <div className="bg-red-50 px-2 py-1 rounded">{children}</div>;
-};

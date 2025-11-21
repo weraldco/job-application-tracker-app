@@ -8,7 +8,6 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { fetcher } from '@/lib/utils';
-import { Job } from '@prisma/client';
 import { useQuery } from '@tanstack/react-query';
 import { Briefcase, Calendar, Target, TrendingUp } from 'lucide-react';
 import {

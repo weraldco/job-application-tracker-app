@@ -51,8 +51,6 @@ const ReminderAddModal = ({
 		setReminderType(reminder as ReminderType);
 	};
 
-	// const queryClient = useQueryClient();
-
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
 		setIsSubmitting(true);

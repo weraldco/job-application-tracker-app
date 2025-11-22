@@ -90,10 +90,16 @@ export async function PATCH(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { id: string } }
+	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
 		const session = await auth();
+
+		if (!session?.user.id)
+			return NextResponse.json({ error: 'Deleting data in unauthorized' });
+		const { id } = await params;
+		const deleteJob = await prisma.job.delete({ where: { id } });
+		return NextResponse.json(deleteJob, { status: 201 });
 	} catch (error) {
 		console.error('Error deleting job:', error);
 		return NextResponse.json(

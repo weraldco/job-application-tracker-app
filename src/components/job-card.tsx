@@ -8,20 +8,18 @@ import { format } from 'date-fns';
 import {
 	Calendar,
 	DollarSign,
-	Edit,
 	ExternalLink,
 	MapPin,
-	MoreVertical,
 	Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
-import { EditJobModal } from './edit-job-modal';
 import { SkillsItem } from './skill-item';
 
 interface JobCardProps {
 	job: Job;
 	onUpdate: (job: Job) => void;
 	onDelete: (jobId: string) => void;
+	onStatusChange: (status: JobStatus, id: string) => void;
 }
 
 const statusColors = {
@@ -32,9 +30,13 @@ const statusColors = {
 	WITHDRAWN: 'bg-gray-100 text-gray-800',
 };
 
-export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
+export function JobCard({
+	job,
+	onUpdate,
+	onDelete,
+	onStatusChange,
+}: JobCardProps) {
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-	const [isEditJobOpen, setIsEditJobOpen] = useState(false);
 
 	const handleStatusChange = async (newStatus: JobStatus) => {
 		try {
@@ -52,22 +54,6 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
 			}
 		} catch (error) {
 			console.error('Failed to update job status:', error);
-		}
-	};
-
-	const handleDelete = async () => {
-		if (confirm('Are you sure you want to delete this job application?')) {
-			try {
-				const response = await fetch(`/api/jobs/${job.id}`, {
-					method: 'DELETE',
-				});
-
-				if (response.ok) {
-					onDelete(job.id);
-				}
-			} catch (error) {
-				console.error('Failed to delete job:', error);
-			}
 		}
 	};
 
@@ -151,7 +137,7 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
 							<select
 								value={job.status}
 								onChange={(e) =>
-									handleStatusChange(e.target.value as JobStatus)
+									onStatusChange(e.target.value as JobStatus, job.id)
 								}
 								className="text-sm border rounded px-2 py-1 bg-white cursor-pointer"
 								onClick={(e) => e.stopPropagation()}
@@ -170,7 +156,7 @@ export function JobCard({ job, onUpdate, onDelete }: JobCardProps) {
 							className="cursor-pointer"
 							onClick={(e) => {
 								e.stopPropagation();
-								handleDelete();
+								onDelete(job.id);
 							}}
 						>
 							<Trash2 className="h-4 w-4" />

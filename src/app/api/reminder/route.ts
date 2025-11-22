@@ -9,7 +9,6 @@ export async function GET() {
 		if (!session?.user?.id) {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
-		console.log('User ID', session.user.id);
 		const reminder = await prisma.reminder.findMany({
 			where: { userId: session.user.id },
 			orderBy: { createdAt: 'desc' },
@@ -19,7 +18,6 @@ export async function GET() {
 			where: { userId: session.user.id },
 		});
 
-		console.log('r', reminder);
 		return NextResponse.json({ reminder: reminder, jobs: jobs });
 	} catch (error) {
 		console.error('Error fetching jobs:', error);

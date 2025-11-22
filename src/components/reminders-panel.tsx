@@ -10,7 +10,7 @@ import {
 	CardTitle,
 } from '@/components/ui/card';
 import { fetcher } from '@/lib/utils';
-import { Reminder, ReminderType } from '@prisma/client';
+import { Job, Reminder, ReminderType } from '@prisma/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Bell, CheckCircle, Clock, Plus, Trash2 } from 'lucide-react';
@@ -35,6 +35,10 @@ export type CreateReminderInput = {
 	jobId: string;
 };
 
+export type ReminderFetchType = {
+	jobs: Job[];
+	reminder: Reminder[];
+};
 export function RemindersPanel() {
 	const [isAddReminderModalOpen, setIsAddReminderModalOpen] = useState(false);
 	const queryClient = useQueryClient();
@@ -82,7 +86,7 @@ export function RemindersPanel() {
 		},
 	});
 
-	const { data, isLoading, error } = useQuery({
+	const { data, isLoading, error } = useQuery<ReminderFetchType>({
 		queryKey: ['reminder-data'],
 		queryFn: () => fetcher('/api/reminder'),
 	});
@@ -90,6 +94,7 @@ export function RemindersPanel() {
 
 	if (isLoading) return <p>Loading..</p>;
 	if (error) return <p>Error</p>;
+	if (!data) return <p>Error fetching reminder datas</p>;
 	console.log('Reminder data', data);
 
 	const getTypeColor = (type: string) => {
@@ -155,7 +160,7 @@ export function RemindersPanel() {
 					</Button>
 
 					<div className="space-y-3">
-						{data.reminder.map((reminder: ReminderT) => (
+						{data.reminder.map((reminder: Reminder) => (
 							<div
 								key={reminder.id}
 								className={`p-3 border rounded-lg ${

@@ -44,14 +44,16 @@ export function EditJobModal({
 		},
 
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['job-data'] });
+			queryClient.invalidateQueries({ queryKey: ['jobs-data'] });
 		},
 	});
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		setIsSubmitting(true);
 		updateJobMutation.mutate({ id: formData.id, data: formData });
 		setIsEditing(false);
+		setIsSubmitting(false);
 	};
 
 	if (!isOpen) return null;

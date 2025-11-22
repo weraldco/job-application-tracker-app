@@ -4,70 +4,26 @@ import { AddJobModal } from '@/components/add-job-modal';
 import { JobCard } from '@/components/job-card';
 import { JobSummarizerModal } from '@/components/job-summarizer-modal';
 import { Button } from '@/components/ui/button';
-import { queryClient } from '@/lib/react-query';
 import { fetcher } from '@/lib/utils';
 import { Job, JobStatus } from '@prisma/client';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Plus, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function JobTracker() {
 	const [jobs, setJobs] = useState<Job[]>([]);
 	const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 	const [isSummarizerModalOpen, setIsSummarizerModalOpen] = useState(false);
 	const [filter, setFilter] = useState<JobStatus | 'ALL'>('ALL');
+	// const [loading, setLoading] = useState(true);
+
+	// useEffect(() => {
+	// 	fetchJobs();
+	// }, []);
 
 	interface DataType {
 		jobs: Job[];
 	}
-	// add new Job
-	const addJobMutation = useMutation({
-		mutationFn: (newJob: Partial<Job>) =>
-			fetcher<Job>('/api/jobs', {
-				method: 'POST',
-				body: JSON.stringify(newJob),
-			}),
-
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['jobs-data'] });
-		},
-	});
-
-	// updating the job data
-	const updateJobMutation = useMutation({
-		mutationFn: (job: Partial<Job>) =>
-			fetcher<Job>(`/api/jobs/${job.id}`, {
-				method: 'PATCH',
-				body: JSON.stringify(job),
-			}),
-
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['jobs-data'] });
-		},
-	});
-
-	const changeStatusMutation = useMutation({
-		mutationFn: ({ status, id }: { status: JobStatus; id: string }) =>
-			fetcher(`/api/jobs/${id}`, {
-				method: 'PATCH',
-				body: JSON.stringify({ status }),
-			}),
-
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['jobs-data'] });
-		},
-	});
-
-	// deleting the job
-	const deleteJobMutation = useMutation({
-		mutationFn: (id: string) =>
-			fetcher(`/api/jobs/${id}`, {
-				method: 'PATCH',
-			}),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['jobs-data'] });
-		},
-	});
 
 	// fetching job data
 	const { data, isLoading, error } = useQuery<DataType>({
@@ -76,26 +32,33 @@ export function JobTracker() {
 	});
 	if (!data) return <div>Error job data..</div>;
 	console.log('jobs data', data.jobs);
-	// end of fetching
+	// const fetchJobs = async () => {
+	// 	try {
+	// 		const response = await fetch('/api/jobs');
+	// 		if (response.ok) {
+	// 			const data = await response.json();
+	// 			setJobs(data);
+	// 		}
+	// 	} catch (error) {
+	// 		console.error('Failed to fetch jobs:', error);
+	// 	} finally {
+	// 		setLoading(false);
+	// 	}
+	// };
 
 	const handleJobAdded = (newJob: Job) => {
-		addJobMutation.mutate(newJob);
+		setJobs((prev) => [newJob, ...prev]);
 		setIsAddModalOpen(false);
 	};
 
 	const handleJobUpdated = (updatedJob: Job) => {
-		updateJobMutation.mutate(updatedJob);
-	};
-
-	const handleStatusChange = (status: JobStatus, id: string) => {
-		changeStatusMutation.mutate({ status, id });
+		setJobs((prev) =>
+			prev.map((job) => (job.id === updatedJob.id ? updatedJob : job))
+		);
 	};
 
 	const handleJobDeleted = (jobId: string) => {
-		if (confirm('Are you sure you want to delete this job application?')) {
-			console.log('jobid', jobId);
-			deleteJobMutation.mutate(jobId);
-		}
+		setJobs((prev) => prev.filter((job) => job.id !== jobId));
 	};
 
 	const filteredJobs =
@@ -161,7 +124,7 @@ export function JobTracker() {
 						size="sm"
 						onClick={() => setFilter('ALL')}
 					>
-						All ({data.jobs.length})
+						All ({jobs.length})
 					</Button>
 					<Button
 						variant={filter === 'APPLIED' ? 'default' : 'outline'}
@@ -220,7 +183,6 @@ export function JobTracker() {
 								job={job}
 								onUpdate={handleJobUpdated}
 								onDelete={handleJobDeleted}
-								onStatusChange={handleStatusChange}
 							/>
 						))}
 					</div>
